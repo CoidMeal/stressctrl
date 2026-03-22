@@ -1,8 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
 import os
+import altair as alt
 
 st.set_page_config(page_title="Контроль состояния", layout="wide")
 
@@ -34,32 +34,60 @@ with tab1:
 
     scale = [-3, -2, -1, 0, 1, 2, 3]
 
-    st.subheader("Самочувствие")
-    s1 = st.select_slider("Чувствую себя здоровым", options=scale)
-    s2 = st.select_slider("Есть силы", options=scale)
-    s3 = st.select_slider("Чувствую усталость", options=scale)
+    def ask_block(title, questions):
+        st.subheader(title)
+        answers = []
+        for q, reverse in questions:
+            val = st.select_slider(q, options=scale, key=q)
+            if reverse:
+                val = -val
+            answers.append(val)
+        return sum(answers) / len(answers)
 
-    st.subheader("Активность")
-    a1 = st.select_slider("Я активен", options=scale)
-    a2 = st.select_slider("Легко работать", options=scale)
-    a3 = st.select_slider("Я вялый", options=scale)
+    # 10 вопросов на блок
+    S_block = [
+        ("Чувствую себя здоровым", False),
+        ("Есть силы", False),
+        ("Чувствую усталость", True),
+        ("Я бодр", False),
+        ("Чувствую слабость", True),
+        ("Есть энергия", False),
+        ("Чувствую себя разбитым", True),
+        ("Физически хорошо себя чувствую", False),
+        ("Есть напряжение в теле", True),
+        ("Чувствую себя комфортно", False),
+    ]
 
-    st.subheader("Настроение")
-    m1 = st.select_slider("Я счастлив", options=scale)
-    m2 = st.select_slider("Доволен собой", options=scale)
-    m3 = st.select_slider("Мне грустно", options=scale)
+    A_block = [
+        ("Я активен", False),
+        ("Легко работать", False),
+        ("Я вялый", True),
+        ("Быстро включаюсь в дела", False),
+        ("Хочу ничего не делать", True),
+        ("Продуктивен", False),
+        ("Тяжело начать", True),
+        ("Много делаю", False),
+        ("Нет сил двигаться", True),
+        ("Полон энергии", False),
+    ]
 
-    # ---------- ИНВЕРСИЯ НЕГАТИВНЫХ ----------
-    s3 = -s3
-    a3 = -a3
-    m3 = -m3
+    M_block = [
+        ("Я счастлив", False),
+        ("Доволен собой", False),
+        ("Мне грустно", True),
+        ("Я спокоен", False),
+        ("Чувствую тревогу", True),
+        ("В хорошем настроении", False),
+        ("Раздражён", True),
+        ("Чувствую радость", False),
+        ("Мне плохо", True),
+        ("Чувствую гармонию", False),
+    ]
 
-    # ---------- РАСЧЁТ САН ----------
-    S = (s1 + s2 + s3) / 3
-    A = (a1 + a2 + a3) / 3
-    M = (m1 + m2 + m3) / 3
+    S = ask_block("Самочувствие", S_block)
+    A = ask_block("Активность", A_block)
+    M = ask_block("Настроение", M_block)
 
-    # перевод в 0–100
     def normalize(x):
         return (x + 3) / 6 * 100
 
@@ -91,14 +119,38 @@ with tab2:
 
     df = pd.read_csv(DATA_FILE)
 
-    if len(df) < 2:
-        st.info("Нужно минимум 2 записи")
+    if df.empty:
+        st.warning("Нет данных")
     else:
         df["time"] = pd.to_datetime(df["time"])
 
-        st.subheader("Самочувствие, Активность, Настроение")
-        st.caption("Чем выше значение - тем лучше состояние")
-
-        st.line_chart(
-            df.set_index("time")[["S", "A", "M"]]
+        # ---------- ВЫБОР ПЕРИОДА ----------
+        period = st.selectbox(
+            "Период",
+            ["Последние 3 дня", "Последние 7 дней", "Последние 30 дней"]
         )
+
+        now = datetime.datetime.now()
+
+        if period == "Последние 3 дня":
+            df = df[df["time"] >= now - datetime.timedelta(days=3)]
+        elif period == "Последние 7 дней":
+            df = df[df["time"] >= now - datetime.timedelta(days=7)]
+        else:
+            df = df[df["time"] >= now - datetime.timedelta(days=30)]
+
+        if len(df) < 2:
+            st.info("Недостаточно данных")
+        else:
+            df_melt = df.melt(id_vars=["time"], value_vars=["S","A","M"],
+                              var_name="Показатель", value_name="Значение")
+
+            chart = alt.Chart(df_melt).mark_line(point=True).encode(
+                x="time:T",
+                y="Значение:Q",
+                color="Показатель:N"
+            ).properties(
+                height=400
+            )
+
+            st.altair_chart(chart, use_container_width=True)
