@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import datetime
@@ -100,4 +101,4 @@ with tab2:
 
         st.line_chart(
             df.set_index("time")[["S", "A", "M"]]
-    )
+        )
