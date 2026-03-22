@@ -4,105 +4,51 @@ import datetime
 import os
 import altair as alt
 
-st.set_page_config(page_title="Контроль состояния", layout="wide")
+st.set_page_config(page_title="Стресс", layout="wide")
 
-# ---------- СТИЛЬ ----------
-st.markdown("""
-<style>
-.stButton>button {
-    background-color: orange;
-    color: white;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ---------- БАЗА ----------
 DATA_FILE = "data.csv"
 
 if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=["time","S","A","M"])
+    df = pd.DataFrame(columns=["time","stress"])
     df.to_csv(DATA_FILE, index=False)
 
-# ---------- ВКЛАДКИ ----------
-tab1, tab2 = st.tabs(["📋 Тест САН", "📊 График"])
+tab1, tab2, tab3 = st.tabs(["📋 Тест", "📊 График", "🎯 Сегодня"])
 
 # =====================================================
-# ================= ТЕСТ САН ===========================
+# ================= ТЕСТ ===============================
 # =====================================================
 with tab1:
-    st.header("Оцените своё состояние")
+    st.header("Оцените состояние")
 
-    scale = [-3, -2, -1, 0, 1, 2, 3]
-
-    def ask_block(title, questions):
-        st.subheader(title)
-        answers = []
-        for q, reverse in questions:
-            val = st.select_slider(q, options=scale, key=q)
-            if reverse:
-                val = -val
-            answers.append(val)
-        return sum(answers) / len(answers)
-
-    # 10 вопросов на блок
-    S_block = [
-        ("Чувствую себя здоровым", False),
-        ("Есть силы", False),
-        ("Чувствую усталость", True),
-        ("Я бодр", False),
-        ("Чувствую слабость", True),
-        ("Есть энергия", False),
-        ("Чувствую себя разбитым", True),
-        ("Физически хорошо себя чувствую", False),
-        ("Есть напряжение в теле", True),
-        ("Чувствую себя комфортно", False),
-    ]
-
-    A_block = [
-        ("Я активен", False),
-        ("Легко работать", False),
-        ("Я вялый", True),
-        ("Быстро включаюсь в дела", False),
-        ("Хочу ничего не делать", True),
-        ("Продуктивен", False),
-        ("Тяжело начать", True),
-        ("Много делаю", False),
-        ("Нет сил двигаться", True),
-        ("Полон энергии", False),
-    ]
-
-    M_block = [
-        ("Я счастлив", False),
-        ("Доволен собой", False),
-        ("Мне грустно", True),
-        ("Я спокоен", False),
-        ("Чувствую тревогу", True),
-        ("В хорошем настроении", False),
-        ("Раздражён", True),
-        ("Чувствую радость", False),
-        ("Мне плохо", True),
-        ("Чувствую гармонию", False),
-    ]
-
-    S = ask_block("Самочувствие", S_block)
-    A = ask_block("Активность", A_block)
-    M = ask_block("Настроение", M_block)
-
-    def normalize(x):
-        return (x + 3) / 6 * 100
-
-    S = normalize(S)
-    A = normalize(A)
-    M = normalize(M)
+    q1 = st.slider("Уровень стресса", 1, 10)
+    q2 = st.slider("Энергия", 1, 10)
+    q3 = st.slider("Мышечная болезненность", 1, 10)
+    q4 = st.slider("Сколько вы спали", 1, 10)
+    q5 = st.slider("Качество сна", 1, 10)
 
     st.divider()
+
+    q6 = st.radio("Настроение", [1,2])
+    q7 = st.radio("Аппетит", [1,2])
+    q8 = st.radio("Мотивация", [1,2])
+    q9 = st.radio("Конфликт с близкими", [1,2])
+
+    # ---------- РЕВЕРС ----------
+    q2 = 11 - q2
+    q4 = 11 - q4
+    q5 = 11 - q5
+
+    # ---------- РАСЧЁТ ----------
+    base = (q1 + q2 + q3 + q4 + q5) / 50 * 100
+    modifier = (q6 + q7 + q8 + q9) / 4
+
+    stress = base * modifier / 2
+    stress = min(max(stress, 0), 100)
 
     if st.button("💾 Сохранить"):
         new_row = pd.DataFrame([{
             "time": datetime.datetime.now(),
-            "S": S,
-            "A": A,
-            "M": M
+            "stress": stress
         }])
 
         df = pd.read_csv(DATA_FILE)
@@ -115,7 +61,7 @@ with tab1:
 # ================= ГРАФИК =============================
 # =====================================================
 with tab2:
-    st.header("График состояния")
+    st.header("График по дням")
 
     df = pd.read_csv(DATA_FILE)
 
@@ -123,34 +69,60 @@ with tab2:
         st.warning("Нет данных")
     else:
         df["time"] = pd.to_datetime(df["time"])
+        df["date"] = df["time"].dt.date
 
-        # ---------- ВЫБОР ПЕРИОДА ----------
-        period = st.selectbox(
-            "Период",
-            ["Последние 3 дня", "Последние 7 дней", "Последние 30 дней"]
-        )
+        # среднее за день
+        df_day = df.groupby("date")["stress"].mean().reset_index()
 
-        now = datetime.datetime.now()
+        chart = alt.Chart(df_day).mark_line(point=True).encode(
+            x="date:T",
+            y="stress:Q"
+        ).properties(height=400)
 
-        if period == "Последние 3 дня":
-            df = df[df["time"] >= now - datetime.timedelta(days=3)]
-        elif period == "Последние 7 дней":
-            df = df[df["time"] >= now - datetime.timedelta(days=7)]
+        st.altair_chart(chart, use_container_width=True)
+
+# =====================================================
+# ================= СЕГОДНЯ ============================
+# =====================================================
+with tab3:
+    st.header("Сегодня")
+
+    df = pd.read_csv(DATA_FILE)
+
+    if df.empty:
+        st.warning("Нет данных")
+    else:
+        df["time"] = pd.to_datetime(df["time"])
+        today = datetime.date.today()
+
+        df_today = df[df["time"].dt.date == today]
+
+        if df_today.empty:
+            st.info("Сегодня нет данных")
         else:
-            df = df[df["time"] >= now - datetime.timedelta(days=30)]
+            stress_today = df_today["stress"].mean()
 
-        if len(df) < 2:
-            st.info("Недостаточно данных")
-        else:
-            df_melt = df.melt(id_vars=["time"], value_vars=["S","A","M"],
-                              var_name="Показатель", value_name="Значение")
+            # цвет
+            if stress_today >= 70:
+                color = "red"
+            elif stress_today >= 50:
+                color = "orange"
+            else:
+                color = "green"
 
-            chart = alt.Chart(df_melt).mark_line(point=True).encode(
-                x="time:T",
-                y="Значение:Q",
-                color="Показатель:N"
-            ).properties(
-                height=400
-            )
-
-            st.altair_chart(chart, use_container_width=True)    
+            # круг
+            st.markdown(f"""
+            <div style="
+                width:300px;
+                height:300px;
+                border-radius:50%;
+                border:15px solid {color};
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:40px;
+                margin:auto;
+            ">
+                {int(stress_today)}
+            </div>
+            """, unsafe_allow_html=True)
