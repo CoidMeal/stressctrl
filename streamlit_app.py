@@ -8,10 +8,21 @@ st.set_page_config(page_title="Стресс", layout="wide")
 
 DATA_FILE = "data.csv"
 
+# ---------- СОЗДАНИЕ ФАЙЛА ----------
 if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=["time","stress"])
+    df = pd.DataFrame(columns=["user","time","stress"])
     df.to_csv(DATA_FILE, index=False)
 
+# ---------- ПОЛЬЗОВАТЕЛЬ ----------
+st.sidebar.title("Пользователь")
+
+user = st.sidebar.text_input("Введите имя")
+
+if not user:
+    st.warning("Введите имя слева")
+    st.stop()
+
+# ---------- ВКЛАДКИ ----------
 tab1, tab2, tab3 = st.tabs(["📋 Тест", "📊 График", "🎯 Сегодня"])
 
 # =====================================================
@@ -45,8 +56,11 @@ with tab1:
     stress = base * modifier / 2
     stress = min(max(stress, 0), 100)
 
+    st.subheader(f"Текущий стресс: {int(stress)}")
+
     if st.button("💾 Сохранить"):
         new_row = pd.DataFrame([{
+            "user": user,
             "time": datetime.datetime.now(),
             "stress": stress
         }])
@@ -65,13 +79,15 @@ with tab2:
 
     df = pd.read_csv(DATA_FILE)
 
+    # фильтр по пользователю
+    df = df[df["user"] == user]
+
     if df.empty:
         st.warning("Нет данных")
     else:
         df["time"] = pd.to_datetime(df["time"])
         df["date"] = df["time"].dt.date
 
-        # среднее за день
         df_day = df.groupby("date")["stress"].mean().reset_index()
 
         chart = alt.Chart(df_day).mark_line(point=True).encode(
@@ -89,6 +105,9 @@ with tab3:
 
     df = pd.read_csv(DATA_FILE)
 
+    # фильтр по пользователю
+    df = df[df["user"] == user]
+
     if df.empty:
         st.warning("Нет данных")
     else:
@@ -102,7 +121,6 @@ with tab3:
         else:
             stress_today = df_today["stress"].mean()
 
-            # цвет
             if stress_today >= 70:
                 color = "red"
             elif stress_today >= 50:
@@ -110,7 +128,6 @@ with tab3:
             else:
                 color = "green"
 
-            # круг
             st.markdown(f"""
             <div style="
                 width:300px;
@@ -125,4 +142,4 @@ with tab3:
             ">
                 {int(stress_today)}
             </div>
-            """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True) 
