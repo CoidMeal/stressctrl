@@ -3,15 +3,11 @@ import pandas as pd
 import datetime
 import os
 
-# ---------- НАСТРОЙКА СТРАНИЦЫ ----------
 st.set_page_config(page_title="Контроль состояния", layout="wide")
 
-# ---------- СТИЛЬ (бело-оранжевый) ----------
+# ---------- СТИЛЬ ----------
 st.markdown("""
 <style>
-body {
-    background-color: white;
-}
 .stButton>button {
     background-color: orange;
     color: white;
@@ -19,129 +15,89 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- БАЗА (CSV) ----------
+# ---------- БАЗА ----------
 DATA_FILE = "data.csv"
 
 if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=[
-        "time","S","M","E","Sleep",
-        "psych_fatigue","phys_fatigue",
-        "decisions","productivity","toxicity","qol"
-    ])
+    df = pd.DataFrame(columns=["time","S","A","M"])
     df.to_csv(DATA_FILE, index=False)
 
 # ---------- ВКЛАДКИ ----------
-tab1, tab2 = st.tabs(["📋 Тесты", "📊 Графики"])
+tab1, tab2 = st.tabs(["📋 Тест САН", "📊 График"])
 
 # =====================================================
-# =============== ВКЛАДКА ТЕСТЫ ========================
+# ================= ТЕСТ САН ===========================
 # =====================================================
 with tab1:
-    st.header("Ежедневное состояние")
+    st.header("Оцените своё состояние")
 
-    # Основные показатели
-    S_raw = st.slider("Стресс", 1, 10)
-    M_raw = st.slider("Настроение", 1, 10)
-    E_raw = st.slider("Энергия", 1, 10)
-    Sleep_raw = st.slider("Качество сна", 1, 10)
+    scale = [-3, -2, -1, 0, 1, 2, 3]
 
-    st.divider()
+    st.subheader("Самочувствие")
+    s1 = st.select_slider("Чувствую себя здоровым", options=scale)
+    s2 = st.select_slider("Есть силы", options=scale)
+    s3 = st.select_slider("Чувствую усталость", options=scale)
 
-    # Факторы
-    work = st.slider("Нагрузка (работа)", 1, 10)
-    finance = st.slider("Финансы", 1, 10)
-    health = st.slider("Здоровье", 1, 10)
-    family = st.slider("Семья", 1, 10)
+    st.subheader("Активность")
+    a1 = st.select_slider("Я активен", options=scale)
+    a2 = st.select_slider("Легко работать", options=scale)
+    a3 = st.select_slider("Я вялый", options=scale)
 
-    # Среднее A
-    A = (work + finance + health + family) / 4
+    st.subheader("Настроение")
+    m1 = st.select_slider("Я счастлив", options=scale)
+    m2 = st.select_slider("Доволен собой", options=scale)
+    m3 = st.select_slider("Мне грустно", options=scale)
 
-    st.write(f"Коэффициент A: {A:.2f}")
+    # ---------- ИНВЕРСИЯ НЕГАТИВНЫХ ----------
+    s3 = -s3
+    a3 = -a3
+    m3 = -m3
 
-    st.divider()
+    # ---------- РАСЧЁТ САН ----------
+    S = (s1 + s2 + s3) / 3
+    A = (a1 + a2 + a3) / 3
+    M = (m1 + m2 + m3) / 3
 
-    # События
-    job_change = st.checkbox("Смена работы (+стресс)")
-    move = st.checkbox("Переезд (-энергия)")
-    loss = st.checkbox("Потеря близкого (-сон)")
-    conflict = st.checkbox("Конфликт (-настроение)")
+    # перевод в 0–100
+    def normalize(x):
+        return (x + 3) / 6 * 100
 
-    # ---------- ПРИМЕНЕНИЕ ЛОГИКИ ----------
-    S = S_raw
-    M = M_raw * A
-    E = E_raw * A
-    Sleep = Sleep_raw * A
-
-    # события
-    if job_change:
-        S += 1
-    if move:
-        E -= 1
-    if loss:
-        Sleep -= 1
-    if conflict:
-        M -= 1
-
-    # нормализация 0–100
-    S = min(max(S * 10, 0), 100)
-    M = min(max(M * 10, 0), 100)
-    E = min(max(E * 10, 0), 100)
-    Sleep = min(max(Sleep * 10, 0), 100)
+    S = normalize(S)
+    A = normalize(A)
+    M = normalize(M)
 
     st.divider()
 
     if st.button("💾 Сохранить"):
-        # ---------- РАСЧЁТ МЕТРИК ----------
-        psych = (S * 0.5 + (100 - E) * 0.3 + (100 - M) * 0.2)
-        phys = ((100 - Sleep) * 0.6 + (100 - E) * 0.4)
-        decisions = (M * 0.4 + E * 0.3 + Sleep * 0.2 - S * 0.3)
-        productivity = (E * 0.5 + M * 0.3 - S * 0.2)
-        toxicity = (S * 0.6 + (100 - M) * 0.4)
-        qol = (M * 0.25 + E * 0.25 + Sleep * 0.2 + (100 - S) * 0.3)
-
-        # ---------- СОХРАНЕНИЕ ----------
         new_row = pd.DataFrame([{
             "time": datetime.datetime.now(),
             "S": S,
-            "M": M,
-            "E": E,
-            "Sleep": Sleep,
-            "psych_fatigue": psych,
-            "phys_fatigue": phys,
-            "decisions": decisions,
-            "productivity": productivity,
-            "toxicity": toxicity,
-            "qol": qol
+            "A": A,
+            "M": M
         }])
 
         df = pd.read_csv(DATA_FILE)
         df = pd.concat([df, new_row], ignore_index=True)
         df.to_csv(DATA_FILE, index=False)
 
-        st.success("Данные сохранены!")
+        st.success("Сохранено")
 
 # =====================================================
-# =============== ВКЛАДКА ГРАФИКИ ======================
+# ================= ГРАФИК =============================
 # =====================================================
 with tab2:
-    st.header("Графики")
+    st.header("График состояния")
 
     df = pd.read_csv(DATA_FILE)
 
-    if df.empty:
-        st.warning("Нет данных")
+    if len(df) < 2:
+        st.info("Нужно минимум 2 записи")
     else:
         df["time"] = pd.to_datetime(df["time"])
 
-        st.subheader("Основные показатели")
-        st.line_chart(df.set_index("time")[["S","M","E","Sleep"]])
+        st.subheader("Самочувствие, Активность, Настроение")
+        st.caption("Чем выше значение - тем лучше состояние")
 
-        st.subheader("Производные показатели")
-        st.line_chart(df.set_index("time")[[
-            "psych_fatigue",
-            "phys_fatigue",
-            "decisions",
-            "productivity",
-            "toxicity",
-            "qol"
-        ]])
+        st.line_chart(
+            df.set_index("time")[["S", "A", "M"]]
+    )
