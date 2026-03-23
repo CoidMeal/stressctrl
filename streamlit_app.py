@@ -63,13 +63,13 @@ else:
 
 # качество усиливает
 sleep_score = sleep_score * (q5 / 10)
-    base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
-    modifier = (q6 + q7 + q8 + q9) / 4
+base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
+modifier = (q6 + q7 + q8 + q9) / 4
 
-    stress = base * modifier / 2
-    stress = min(max(stress, 0), 100)
+stress = base * modifier / 2
+stress = min(max(stress, 0), 100)
 
-    st.subheader(f"Текущий стресс: {int(stress)}")
+st.subheader(f"Текущий стресс: {int(stress)}")
 
     if st.button("💾 Сохранить"):
         new_row = pd.DataFrame([{
