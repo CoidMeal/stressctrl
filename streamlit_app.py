@@ -53,7 +53,17 @@ with tab1:
     q8 = 2 - q8
 
     # ---------- РАСЧЁТ ----------
-    base = (q1 + q2 + q3 + q4 + q5) / 50 * 100
+    # категории сна
+if q4 <= 5:
+    sleep_score = 3   # плохо
+elif q4 <= 7:
+    sleep_score = 2   # нормально
+else:
+    sleep_score = 1   # хорошо
+
+# качество усиливает
+sleep_score = sleep_score * (q5 / 10)
+    base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
     modifier = (q6 + q7 + q8 + q9) / 4
 
     stress = base * modifier / 2
@@ -81,8 +91,6 @@ with tab2:
     st.header("График по дням")
 
     df = pd.read_csv(DATA_FILE)
-
-    # фильтр по пользователю
     df = df[df["user"] == user]
 
     if df.empty:
@@ -91,11 +99,29 @@ with tab2:
         df["time"] = pd.to_datetime(df["time"])
         df["date"] = df["time"].dt.date
 
+        # среднее за день
         df_day = df.groupby("date")["stress"].mean().reset_index()
 
+        # ---------- ВЫБОР ПЕРИОДА ----------
+        period = st.selectbox(
+            "Период",
+            ["3 дня", "7 дней", "30 дней"]
+        )
+
+        today = datetime.date.today()
+
+        if period == "3 дня":
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=3)]
+        elif period == "7 дней":
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=7)]
+        else:
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=30)]
+
+        # ---------- ГРАФИК ----------
         chart = alt.Chart(df_day).mark_line(point=True).encode(
-            x="date:T",
-            y="stress:Q"
+            x=alt.X("date:T", title="Дата"),
+            y=alt.Y("stress:Q", title="Стресс"),
+            tooltip=["date", "stress"]
         ).properties(height=400)
 
         st.altair_chart(chart, use_container_width=True)
