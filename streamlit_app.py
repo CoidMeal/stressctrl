@@ -71,18 +71,18 @@ stress = min(max(stress, 0), 100)
 
 st.subheader(f"Текущий стресс: {int(stress)}")
 
-    if st.button("💾 Сохранить"):
-        new_row = pd.DataFrame([{
-            "user": user,
-            "time": datetime.datetime.now(),
-            "stress": stress
+if st.button("💾 Сохранить"):
+    new_row = pd.DataFrame([{
+        "user": user,
+        "time": datetime.datetime.now(),
+        "stress": stress
         }])
 
-        df = pd.read_csv(DATA_FILE)
-        df = pd.concat([df, new_row], ignore_index=True)
-        df.to_csv(DATA_FILE, index=False)
+    df = pd.read_csv(DATA_FILE)
+    df = pd.concat([df, new_row], ignore_index=True)
+    df.to_csv(DATA_FILE, index=False)
 
-        st.success("Сохранено")
+    st.success("Сохранено")
 
 # =====================================================
 # ================= ГРАФИК =============================
