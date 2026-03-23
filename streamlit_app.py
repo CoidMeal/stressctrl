@@ -99,37 +99,19 @@ with tab2:
         df["time"] = pd.to_datetime(df["time"])
         df["date"] = df["time"].dt.date
 
-        # среднее за день
+        # 1 точка = 1 день
         df_day = df.groupby("date")["stress"].mean().reset_index()
 
-        # ---------- ВЫБОР ПЕРИОДА ----------
-        period = st.selectbox(
-            "Период",
-            ["3 дня", "7 дней", "30 дней"]
-        )
-
-        today = datetime.date.today()
-
-        if period == "3 дня":
-            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=3)]
-        elif period == "7 дней":
-            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=7)]
-        else:
-            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=30)]
-
-        # ---------- ГРАФИК ----------
+        # дата в норм формат
         df_day["date"] = pd.to_datetime(df_day["date"])
-        chart = alt.Chart(df_day).mark_line(point=True).encode(
-    x=alt.X(
-        "date:T",
-        title="День",
-        axis=alt.Axis(format="%d %b")  # ← только день и месяц
-    ),
-    y=alt.Y("stress:Q", title="Стресс"),
-    tooltip=["date", "stress"]
-).properties(height=400)
 
-st.altair_chart(chart, use_container_width=True)
+        chart = alt.Chart(df_day).mark_line(point=True).encode(
+            x=alt.X("date:T", axis=alt.Axis(format="%d %b"), title="День"),
+            y=alt.Y("stress:Q", title="Стресс"),
+            tooltip=["date", "stress"]
+        ).properties(height=400)
+
+        st.altair_chart(chart, use_container_width=True)
 # =====================================================
 # ================= СЕГОДНЯ ============================
 # =====================================================
