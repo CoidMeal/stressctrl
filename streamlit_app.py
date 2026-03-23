@@ -54,35 +54,35 @@ with tab1:
 
     # ---------- РАСЧЁТ ----------
     # категории сна
-if q4 <= 5:
-    sleep_score = 3   # плохо
-elif q4 <= 7:
-    sleep_score = 2   # нормально
-else:
-    sleep_score = 1   # хорошо
+    if q4 <= 5:
+        sleep_score = 3   # плохо
+    elif q4 <= 7:
+        sleep_score = 2   # нормально
+    else:
+        sleep_score = 1   # хорошо
 
 # качество усиливает
-sleep_score = sleep_score * (q5 / 10)
-base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
-modifier = (q6 + q7 + q8 + q9) / 4
+    sleep_score = sleep_score * (q5 / 10)
+    base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
+    modifier = (q6 + q7 + q8 + q9) / 4
 
-stress = base * modifier / 2
-stress = min(max(stress, 0), 100)
+    stress = base * modifier / 2
+    stress = min(max(stress, 0), 100)
 
-st.subheader(f"Текущий стресс: {int(stress)}")
+    st.subheader(f"Текущий стресс: {int(stress)}")
 
-if st.button("💾 Сохранить"):
-    new_row = pd.DataFrame([{
-        "user": user,
-        "time": datetime.datetime.now(),
-        "stress": stress
+    if st.button("💾 Сохранить"):
+        new_row = pd.DataFrame([{
+            "user": user,
+            "time": datetime.datetime.now(),
+            "stress": stress
         }])
 
-    df = pd.read_csv(DATA_FILE)
-    df = pd.concat([df, new_row], ignore_index=True)
-    df.to_csv(DATA_FILE, index=False)
+        df = pd.read_csv(DATA_FILE)
+        df = pd.concat([df, new_row], ignore_index=True)
+        df.to_csv(DATA_FILE, index=False)
 
-    st.success("Сохранено")
+        st.success("Сохранено")
 
 # =====================================================
 # ================= ГРАФИК =============================
@@ -118,15 +118,18 @@ with tab2:
             df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=30)]
 
         # ---------- ГРАФИК ----------
+        df_day["date"] = pd.to_datetime(df_day["date"])
         chart = alt.Chart(df_day).mark_line(point=True).encode(
     x=alt.X(
-        "date:O",  # ← ВАЖНО (Ordinal = категории)
-        title="День"
+        "date:T",
+        title="День",
+        axis=alt.Axis(format="%d %b")  # ← только день и месяц
     ),
     y=alt.Y("stress:Q", title="Стресс"),
     tooltip=["date", "stress"]
 ).properties(height=400)
 
+st.altair_chart(chart, use_container_width=True)
 # =====================================================
 # ================= СЕГОДНЯ ============================
 # =====================================================
