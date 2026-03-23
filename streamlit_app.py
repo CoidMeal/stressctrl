@@ -119,12 +119,13 @@ with tab2:
 
         # ---------- ГРАФИК ----------
         chart = alt.Chart(df_day).mark_line(point=True).encode(
-            x=alt.X("date:T", title="Дата"),
-            y=alt.Y("stress:Q", title="Стресс"),
-            tooltip=["date", "stress"]
-        ).properties(height=400)
-
-        st.altair_chart(chart, use_container_width=True)
+    x=alt.X(
+        "date:O",  # ← ВАЖНО (Ordinal = категории)
+        title="День"
+    ),
+    y=alt.Y("stress:Q", title="Стресс"),
+    tooltip=["date", "stress"]
+).properties(height=400)
 
 # =====================================================
 # ================= СЕГОДНЯ ============================
