@@ -13,13 +13,12 @@ if not os.path.exists(DATA_FILE):
     df = pd.DataFrame(columns=["user","time","stress"])
     df.to_csv(DATA_FILE, index=False)
 
-# ---------- ПОЛЬЗОВАТЕЛЬ ----------
-st.sidebar.title("Пользователь")
+# ---------- ИМЯ ПОЛЬЗОВАТЕЛЯ ----------
+st.title("Контроль стресса")
 
-user = st.sidebar.text_input("Введите имя")
+user = st.text_input("Введите имя", placeholder="Например: Иван")
 
 if not user:
-    st.warning("Введите имя слева")
     st.stop()
 
 # ---------- ВКЛАДКИ ----------
@@ -53,17 +52,7 @@ with tab1:
     q8 = 2 - q8
 
     # ---------- РАСЧЁТ ----------
-    # категории сна
-    if q4 <= 5:
-        sleep_score = 3   # плохо
-    elif q4 <= 7:
-        sleep_score = 2   # нормально
-    else:
-        sleep_score = 1   # хорошо
-
-# качество усиливает
-    sleep_score = sleep_score * (q5 / 10)
-    base = (q1 + q2 + q3 + sleep_score*10) / 40 * 100
+    base = (q1 + q2 + q3 + q4 + q5) / 50 * 100
     modifier = (q6 + q7 + q8 + q9) / 4
 
     stress = base * modifier / 2
@@ -99,19 +88,33 @@ with tab2:
         df["time"] = pd.to_datetime(df["time"])
         df["date"] = df["time"].dt.date
 
-        # 1 точка = 1 день
+        # 1 день = 1 точка
         df_day = df.groupby("date")["stress"].mean().reset_index()
 
-        # дата в норм формат
-        df_day["date"] = pd.to_datetime(df_day["date"])
+        # строка → категории (чтобы не было повторов)
+        df_day["date_str"] = df_day["date"].astype(str)
 
+        # ---------- ВЫБОР ПЕРИОДА ----------
+        period = st.selectbox("Период", ["3 дня", "7 дней", "30 дней"])
+
+        today = datetime.date.today()
+
+        if period == "3 дня":
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=3)]
+        elif period == "7 дней":
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=7)]
+        else:
+            df_day = df_day[df_day["date"] >= today - datetime.timedelta(days=30)]
+
+        # ---------- ГРАФИК ----------
         chart = alt.Chart(df_day).mark_line(point=True).encode(
-            x=alt.X("date:T", axis=alt.Axis(format="%d %b"), title="День"),
+            x=alt.X("date_str:N", title="День"),
             y=alt.Y("stress:Q", title="Стресс"),
-            tooltip=["date", "stress"]
+            tooltip=["date_str", "stress"]
         ).properties(height=400)
 
         st.altair_chart(chart, use_container_width=True)
+
 # =====================================================
 # ================= СЕГОДНЯ ============================
 # =====================================================
@@ -119,8 +122,6 @@ with tab3:
     st.header("Сегодня")
 
     df = pd.read_csv(DATA_FILE)
-
-    # фильтр по пользователю
     df = df[df["user"] == user]
 
     if df.empty:
@@ -157,4 +158,4 @@ with tab3:
             ">
                 {int(stress_today)}
             </div>
-            """, unsafe_allow_html=True) 
+            """, unsafe_allow_html=True)
