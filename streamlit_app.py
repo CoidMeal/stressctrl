@@ -12,11 +12,27 @@ supabase = create_client(url, key)
 st.set_page_config(page_title="Стресс", layout="wide")
 
 st.title("Контроль стресса")
+# ---------- ВХОД ----------
+if "user" not in st.session_state:
+    st.title("Контроль стресса")
 
-user = st.text_input("Введите имя", placeholder="Например: Иван")
+    st.markdown("### Введите имя")
 
-if not user:
+    name_input = st.text_input("", placeholder="Например: Иван")
+
+    if st.button("🚀 Начать", use_container_width=True):
+        if name_input:
+            st.session_state.user = name_input
+            st.rerun()
+        else:
+            st.warning("Введите имя")
+
     st.stop()
+
+user = st.session_state.user
+if st.button("Сменить пользователя"):
+    del st.session_state.user
+    st.rerun()
 
 tab1, tab2, tab3 = st.tabs(["📋 Тест", "📊 График", "🎯 Сегодня"])
 
