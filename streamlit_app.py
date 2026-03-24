@@ -9,7 +9,7 @@ url = "https://wusyaloxkcaqojloosum.supabase.co"
 key = "sb_publishable_eVZeidzDpvZk2vLhmwZgBg_4I-x9j5K"
 supabase = create_client(url, key)
 
-st.set_page_config(page_title="Стресс", layout="wide")
+st.set_page_config(page_title="stressctrl", layout="wide")
 
 
 # ---------- ВХОД ----------
